@@ -469,3 +469,44 @@ func removeJSONWhitespace(cfg *DeclarativeConfig) {
 		cfg.Others[io].Blob = buf.Bytes()
 	}
 }
+
+func TestWriteMermaidChannels(t *testing.T) {
+	type spec struct {
+		name     string
+		cfg      DeclarativeConfig
+		expected string
+	}
+	specs := []spec{
+		{
+			name: "Success",
+			cfg:  buildValidDeclarativeConfig(true),
+			expected: `<-- Channel "dark" -->
+graph LR
+anakin.v0.0.1
+anakin.v0.1.0
+anakin.v0.1.0-- replaces --> anakin.v0.0.1
+anakin.v0.1.1
+anakin.v0.1.1-- replaces --> anakin.v0.0.1
+anakin.v0.1.1-- skips --> anakin.v0.1.0
+<-- Channel "light" -->
+graph LR
+anakin.v0.0.1
+anakin.v0.1.0
+anakin.v0.1.0-- replaces --> anakin.v0.0.1
+<-- Channel "mando" -->
+graph LR
+boba-fett.v1.0.0
+boba-fett.v2.0.0
+boba-fett.v2.0.0-- replaces --> boba-fett.v1.0.0
+`,
+		},
+	}
+	for _, s := range specs {
+		t.Run(s.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := WriteMermaidChannels(s.cfg, &buf)
+			require.NoError(t, err)
+			require.Equal(t, s.expected, buf.String())
+		})
+	}
+}

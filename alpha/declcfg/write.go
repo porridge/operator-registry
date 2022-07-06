@@ -3,12 +3,38 @@ package declcfg
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"sort"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
 )
+
+func WriteMermaidChannels(cfg DeclarativeConfig, out io.Writer) error {
+	for _, c := range cfg.Channels {
+		var buf bytes.Buffer
+
+		buf.WriteString(fmt.Sprintf("<-- Channel %q -->\n", c.Name))
+		buf.WriteString("graph LR\n")
+
+		for _, ce := range c.Entries {
+
+			// no support for SkipRange yet
+			buf.WriteString(fmt.Sprintf("%s\n", ce.Name))
+			if len(ce.Replaces) > 0 {
+				buf.WriteString(fmt.Sprintf("%s-- %s --> %s\n", ce.Name, "replaces", ce.Replaces))
+			}
+			if len(ce.Skips) > 0 {
+				for _, s := range ce.Skips {
+					buf.WriteString(fmt.Sprintf("%s-- %s --> %s\n", ce.Name, "skips", s))
+				}
+			}
+		}
+		out.Write(buf.Bytes())
+	}
+	return nil
+}
 
 func WriteJSON(cfg DeclarativeConfig, w io.Writer) error {
 	enc := json.NewEncoder(w)
