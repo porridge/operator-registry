@@ -2,7 +2,11 @@ package util
 
 import (
 	"errors"
+	"io/ioutil"
+	"os"
 
+	"github.com/operator-framework/operator-registry/pkg/image/containerdregistry"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -36,4 +40,33 @@ func GetTLSOptions(cmd *cobra.Command) (bool, bool, error) {
 		}
 		return skipTLSVerify, useHTTP, nil
 	}
+}
+
+func CreateCLIRegistry(cmd *cobra.Command) (*containerdregistry.Registry, error) {
+	skipTlsVerify, useHTTP, err := GetTLSOptions(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheDir, err := os.MkdirTemp("", "opm-registry-")
+	if err != nil {
+		return nil, err
+	}
+
+	reg, err := containerdregistry.NewRegistry(
+		containerdregistry.WithCacheDir(cacheDir),
+		containerdregistry.SkipTLSVerify(skipTlsVerify),
+		containerdregistry.WithPlainHTTP(useHTTP),
+		containerdregistry.WithLog(nullLogger()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return reg, nil
+}
+
+func nullLogger() *logrus.Entry {
+	logger := logrus.New()
+	logger.SetOutput(ioutil.Discard)
+	return logrus.NewEntry(logger)
 }

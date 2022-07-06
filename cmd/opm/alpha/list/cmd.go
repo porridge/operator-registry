@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/operator-framework/operator-registry/alpha/action"
+	"github.com/operator-framework/operator-registry/cmd/opm/internal/util"
 )
 
 const humanReadabilityOnlyNote = `NOTE: This is meant to be used for convenience and human-readability only. The
@@ -22,7 +23,17 @@ func NewCmd() *cobra.Command {
 
 ` + humanReadabilityOnlyNote,
 	}
-	list.AddCommand(newPackagesCmd(), newChannelsCmd(), newBundlesCmd())
+	np := newPackagesCmd()
+	np.Flags().Bool("skip-tls-verify", false, "disable TLS verification")
+	np.Flags().Bool("use-http", false, "use plain HTTP")
+	nc := newChannelsCmd()
+	nc.Flags().Bool("skip-tls-verify", false, "disable TLS verification")
+	nc.Flags().Bool("use-http", false, "use plain HTTP")
+	nb := newBundlesCmd()
+	nb.Flags().Bool("skip-tls-verify", false, "disable TLS verification")
+	nb.Flags().Bool("use-http", false, "use plain HTTP")
+
+	list.AddCommand(np, nc, nb)
 	return list
 }
 
@@ -37,7 +48,12 @@ func newPackagesCmd() *cobra.Command {
 ` + humanReadabilityOnlyNote,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			lp := action.ListPackages{IndexReference: args[0]}
+			reg, err := util.CreateCLIRegistry(cmd)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			defer reg.Destroy()
+			lp := action.ListPackages{IndexReference: args[0], Registry: reg}
 			res, err := lp.Run(cmd.Context())
 			if err != nil {
 				logger.Fatal(err)
@@ -61,7 +77,12 @@ func newChannelsCmd() *cobra.Command {
 ` + humanReadabilityOnlyNote,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			lc := action.ListChannels{IndexReference: args[0]}
+			reg, err := util.CreateCLIRegistry(cmd)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			defer reg.Destroy()
+			lc := action.ListChannels{IndexReference: args[0], Registry: reg}
 			if len(args) > 1 {
 				lc.PackageName = args[1]
 			}
@@ -90,7 +111,12 @@ for each channel in which the bundle is present).
 ` + humanReadabilityOnlyNote,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			lb := action.ListBundles{IndexReference: args[0]}
+			reg, err := util.CreateCLIRegistry(cmd)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			defer reg.Destroy()
+			lb := action.ListBundles{IndexReference: args[0], Registry: reg}
 			if len(args) > 1 {
 				lb.PackageName = args[1]
 			}
