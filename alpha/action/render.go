@@ -122,7 +122,12 @@ func (r Render) renderReference(ctx context.Context, ref string) (*declcfg.Decla
 			if !r.AllowedRefMask.Allowed(RefDCDir) {
 				return nil, fmt.Errorf("cannot render declarative config directory: %w", ErrNotAllowed)
 			}
-			return declcfg.LoadFS(os.DirFS(ref))
+			img, err := registry.NewImageInput(image.SimpleReference(ref), ref)
+			if err != nil {
+				return nil, err
+			}
+
+			return bundleToDeclcfg(img.Bundle)
 		} else {
 			// The only supported file type is an sqlite DB file,
 			// since declarative configs will be in a directory.
